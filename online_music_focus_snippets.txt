@@ -1,0 +1,50 @@
+【来源】
+远程脚本：https://phone-ctn.pages.dev/index.js
+本地抓取副本：C:\Users\l1349\.local\share\kilo\tool-output\tool_d66e4de5a001FYY6K2nb9aOw4q
+
+====================
+1) 在线音乐搜索实现（API + 请求方式）
+====================
+
+[Snippet A: httpGet(fetch) + 音频可用性检测函数]
+function Mq(){const e=(0,i.ref)(!1),n=(0,i.ref)([]),t=(0,i.ref)(!1),a=(0,i.ref)(''),r=(0,i.ref)(!1);let o=null,s=0;const l=()=>{o&&(o.abort(),o=null)},c=(0,i.ref)(!1),A=async(e,n)=>{const t=new AbortController,a=()=>t.abort();let r=null;try{n&&(n.aborted?t.abort():n.addEventListener('abort',a,{once:!0})),r=setTimeout(()=>t.abort(),8e3);const o=await fetch(e,{signal:t.signal});if(!o.ok)throw new Error('Network response was not ok');return await o.json()}catch(e){return e instanceof DOMException&&'AbortError'===e.name||console.error('HTTP请求失败:',e),null}finally{r&&clearTimeout(r),n?.removeEventListener?.('abort',a)}},d=(e,n)=>new Promise(t=>{if(n?.aborted)return void t(!1);const a=new Audio;a.preload='metadata';let r=null;const o=e=>{r&&clearTimeout(r),n?.removeEventListener?.('abort',i),a.src='',a.load(),t(e)},i=()=>o(!1);n?.addEventListener?.('abort',i,{once:!0}),r=setTimeout(()=>o(!1),3e3),a.onloadedmetadata=()=>{o(!0)},a.onerror=()=>{o(!1)},a.src=e,a.load()})
+
+[Snippet B: 网易云搜索 + 取播放地址]
+p=async(e,n)=>{const t=[];try{const a=`https://api.vkeys.cn/v2/music/netease?word=${encodeURIComponent(e)}`,r=await A(a,n);if(!r?.data?.length)return t;for(const e of r.data.slice(0,5)){if(n?.aborted)break;if(e.id){try{const a=`https://api.vkeys.cn/v2/music/netease?id=${e.id}`,r=await A(a,n);if(r?.data?.url){await d(r.data.url,n)&&t.push({title:e.song||e.name||e.title||'未知歌曲',artist:e.singer||e.artist||'未知歌手',url:r.data.url,cover:e.cover||'',source:'网易云'})}}catch(e){console.warn('获取网易云音源失败:',e)}if(t.length>=3)break}}}catch(e){console.error('网易云搜索失败:',e)}return t}
+
+[Snippet C: QQ 搜索 + 取播放地址]
+C=async(e,n)=>{const t=[];try{const a=e.replace(/\s/g,''),r=`https://api.vkeys.cn/v2/music/tencent?word=${encodeURIComponent(a)}`,o=await A(r,n);if(!o?.data?.length)return t;let i='';const s=[],l=new Set,c=new Map;for(const e of o.data.slice(0,20)){if(n?.aborted)break;if(!i&&e.cover&&(i=e.cover),e.id){const n=String(e.id);l.has(n)||(l.add(n),s.push(n),c.set(n,e))}if(e.grp)for(const n of e.grp.slice(0,5))if(n.id){const e=String(n.id);l.has(e)||(l.add(e),s.push(e),c.set(e,n))}}for(const e of s.slice(0,5)){if(n?.aborted)break;try{const a=`https://api.vkeys.cn/v2/music/tencent?id=${e}`,r=await A(a,n);if(!r?.data?.url)continue;if(await d(r.data.url,n)){const n=c.get(e)||o.data[0];t.push({title:n?.song||n?.name||n?.title||'未知歌曲',artist:n?.singer||n?.artist||'未知歌手',url:r.data.url,cover:n?.cover||i||'',source:'QQ音乐'})}}catch(e){console.warn('获取QQ音源失败:',e)}if(t.length>=3)break}}catch(e){console.error('QQ音乐搜索失败:',e)}return t}
+
+[Snippet D: 触发搜索流程（先网易后QQ）]
+handleMusicSearch:async e=>{if(!e)return;if(t.value)return;l(),s+=1;const i=s;o=new AbortController,t.value=!0,a.value='',n.value=[],r.value=!0;try{const t=await p(e,o.signal);if(i!==s)return;n.value=[...t];const r=await C(e,o.signal);if(i!==s)return;n.value=[...n.value,...r],0===n.value.length&&(a.value='')}catch(e){e instanceof DOMException&&'AbortError'===e.name||(console.error('搜索失败:',e),a.value='搜索失败，请稍后重试')}finally{i===s&&(t.value=!1,o=null)}}
+
+====================
+2) 服务器端代理逻辑（如果有）
+====================
+
+[Snippet E: 可见请求均直连第三方聚合API]
+https://api.vkeys.cn/v2/music/netease?word=${encodeURIComponent(e)}
+https://api.vkeys.cn/v2/music/netease?id=${e.id}
+https://api.vkeys.cn/v2/music/tencent?word=${encodeURIComponent(a)}
+https://api.vkeys.cn/v2/music/tencent?id=${e}
+
+说明：在该脚本可见代码中未出现本项目自建后端路由（如 /api/*、worker 转发函数等）；可见的是前端直接 fetch 到 api.vkeys.cn。
+
+====================
+3) 搜索结果如何播放
+====================
+
+[Snippet F: 点击结果后加入播放列表并播放]
+const playSearchResult = (result: SearchResult) => {
+  const newSong: Song = {
+    url: result.url,
+    artist: result.artist,
+    title: result.title,
+  };
+  musicAddSong(newSong);
+  musicPlaySong(0);
+  showSearch.value = false;
+};
+
+[Snippet G: 导出映射，证明 minified 名称对应关系]
+return{showMusicSearch:e,musicSearchResults:n,isMusicSearching:t,musicSearchError:a,hasMusicSearched:r,showMusicUrlModal:c,openMusicSearchPanel:()=>{e.value=!0,n.value=[],a.value='',r.value=!1,l()},openMusicUrlModal:()=>{c.value=!0},handleMusicSearch:async e=>{if(!e)return;if(t.value)return;l(),s+=1;const i=s;o=new AbortController,t.value=!0,a.value='',n.value=[],r.value=!0;try{const t=await p(e,o.signal);if(i!==s)return;n.value=[...t];const r=await C(e,o.signal);if(i!==s)return;n.value=[...n.value,...r],0===n.value.length&&(a.value='')}catch(e){e instanceof DOMException&&'AbortError'===e.name||(console.error('搜索失败:',e),a.value='搜索失败，请稍后重试')}finally{i===s&&(t.value=!1,o=null)}},httpGet:A,checkAudioAvailability:d,searchNetease:p,searchQQ:C}}
