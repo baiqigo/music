@@ -1,5 +1,38 @@
 # CHANGELOG_AGENT
 
+## 2026-04-12T00:08:00+08:00
+
+### 月光白搜索页/列表页配色修复 + 收藏按钮修复 + 搜索并行加速
+
+- **月光白搜索页配色修复**（CSS 新增 8 条规则）：
+  - `.search-icon`：白色 → `rgba(60,60,70,0.5)` 深灰。
+  - `.search-btn` / `.search-btn:hover`：白色 → 深灰。
+  - `.search-placeholder`：白色 → `rgba(80,80,90,0.45)`。
+  - `.search-loading`（"搜索中..."）：白色 → `rgba(80,80,90,0.5)`。
+  - `.result-title`：白色 → `rgba(40,40,50,0.9)`。
+  - `.result-artist`：白色 → `rgba(80,80,90,0.55)`。
+  - `.search-result-item:hover`：白色高亮 → `rgba(0,0,0,0.05)`。
+  - `.search-results::-webkit-scrollbar-thumb`：白色 → `rgba(0,0,0,0.12)`。
+- **月光白歌曲列表配色修复**（CSS 新增 4 条规则）：
+  - `.playlist-item-index`：白色序号 → `rgba(60,60,70,0.5)` 深灰。
+  - `.playlist-item-index:hover`：加深 + 浅灰背景。
+  - `.playlist-item-remove`：深灰。
+  - `.playlist-item-checkbox`：accent-color 紫色。
+- **月光白卡片收藏按钮修复**：
+  - `#ml-btn-heart` 从单个空心 SVG 改为双 SVG 互斥方案（`#ml-icon-heart-empty` / `#ml-icon-heart-filled`），用 `<div>`
+    容器包裹。
+  - 新增 `syncMlFavIcon()` 函数：检查默认主题 `btn-fav` 的 `fav-active` 类，同步月光白卡片心形图标（空心/实心红色）。
+  - `updateFavBtn()` 末尾新增 `syncMlFavIcon()` 调用，确保每次收藏状态变化都同步。
+  - `enterMoonlightLayout()` 初始化时调用 `syncMlFavIcon()`。
+- **搜索速度优化**：
+  - `searchPlatform()` 内部：5 首候选歌曲的 URL 获取 + 音频可用性校验从**顺序执行**改为 `Promise.allSettled`
+    **全部并行**，取前 `maxValid` 条可用结果。
+  - `doSearch()` 双平台搜索：从顺序（先网易云→再 QQ 音乐）改为 `Promise.all`
+    **两平台并行**，移除中间态"继续搜索QQ音乐..."提示。
+  - 预计搜索总耗时从 ~10 秒降至 ~3-5 秒（取决于 API 响应和音频校验速度）。
+- **改动范围**：仅 `src/alice-music-float/index.ts`（CSS +22 行，HTML +6 行，JS +25 行 -12 行）。
+- **构建结果**：`npm run build:dev` 所有入口 `compiled successfully`。
+
 ## 2026-04-11T13:55:00+08:00
 
 ### 月光白转场动画 + 设置页月光白配色 + 月亮不超出界面

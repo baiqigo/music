@@ -278,39 +278,41 @@ async function searchPlatform(
   const searchJson = await searchResp.json();
   const items: any[] = Array.isArray(searchJson?.data) ? searchJson.data.slice(0, maxCheck) : [];
 
+  // 2. 并行获取播放地址 + 校验可用性（所有候选同时进行）
+  const tasks = items
+    .filter((item: any) => item.id)
+    .map(async (item: any): Promise<SearchResult | null> => {
+      try {
+        if (signal.aborted) return null;
+        const urlResp = await fetch(`${baseUrl}?id=${encodeURIComponent(item.id)}`, { signal });
+        const urlJson = await urlResp.json();
+        const audioUrl: string = urlJson?.data?.url;
+        if (!audioUrl) return null;
+
+        const ok = await checkAudioPlayable(audioUrl);
+        if (!ok) return null;
+
+        return {
+          title: item.song || item.name || item.title || '未知歌曲',
+          artist: item.singer || item.artist || '未知歌手',
+          url: audioUrl,
+          cover: item.cover || '',
+          source: sourceName,
+        };
+      } catch {
+        return null;
+      }
+    });
+
+  // 3. 收集结果，取前 maxValid 条可用
+  const settled = await Promise.allSettled(tasks);
   const results: SearchResult[] = [];
-
-  for (const item of items) {
-    if (signal.aborted) break;
+  for (const s of settled) {
     if (results.length >= maxValid) break;
-
-    const id = item.id;
-    if (!id) continue;
-
-    // 2. 取播放地址
-    try {
-      const urlResp = await fetch(`${baseUrl}?id=${encodeURIComponent(id)}`, { signal });
-      const urlJson = await urlResp.json();
-      const audioUrl: string = urlJson?.data?.url;
-      if (!audioUrl) continue;
-
-      // 3. 校验可用性
-      const ok = await checkAudioPlayable(audioUrl);
-      if (!ok) continue;
-
-      results.push({
-        title: item.song || item.name || item.title || '未知歌曲',
-        artist: item.singer || item.artist || '未知歌手',
-        url: audioUrl,
-        cover: item.cover || '',
-        source: sourceName,
-      });
-    } catch {
-      // 单条出错跳过
-      continue;
+    if (s.status === 'fulfilled' && s.value) {
+      results.push(s.value);
     }
   }
-
   return results;
 }
 
@@ -1188,6 +1190,50 @@ html, body {
 .float-panel.theme-moonlight .batch-delete-btn {
   border-color: rgba(220, 60, 60, 0.5);
   color: rgba(220, 60, 60, 0.7);
+}
+/* 月光白：搜索页元素深色适配 */
+.float-panel.theme-moonlight .search-icon {
+  color: rgba(60, 60, 70, 0.5);
+}
+.float-panel.theme-moonlight .search-btn {
+  color: rgba(60, 60, 70, 0.5);
+}
+.float-panel.theme-moonlight .search-btn:hover {
+  color: rgba(40, 40, 50, 0.9);
+}
+.float-panel.theme-moonlight .search-placeholder {
+  color: rgba(80, 80, 90, 0.45);
+}
+.float-panel.theme-moonlight .result-title {
+  color: rgba(40, 40, 50, 0.9);
+}
+.float-panel.theme-moonlight .result-artist {
+  color: rgba(80, 80, 90, 0.55);
+}
+.float-panel.theme-moonlight .search-result-item:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+.float-panel.theme-moonlight .search-results::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+}
+.float-panel.theme-moonlight .search-loading {
+  color: rgba(80, 80, 90, 0.5);
+}
+.float-panel.theme-moonlight .playlist-item-index {
+  color: rgba(60, 60, 70, 0.5);
+}
+.float-panel.theme-moonlight .playlist-item-index:hover {
+  color: rgba(40, 40, 50, 0.8);
+  background: rgba(0, 0, 0, 0.04);
+}
+.float-panel.theme-moonlight .playlist-item-remove {
+  color: rgba(80, 80, 90, 0.4);
+}
+.float-panel.theme-moonlight .playlist-item-checkbox {
+  accent-color: rgba(85, 99, 212, 0.7);
+}
+.float-panel.theme-moonlight .result-source {
+  color: rgba(85, 99, 212, 0.65);
 }
 /* 月光白卡片容器（注入到 float-panel 内） */
 .card {
@@ -2154,9 +2200,14 @@ $(() => {
       <path d="M11 2.82a1 1 0 0 1 .804-.98l3-.6A1 1 0 0 1 16 2.22V4l-5 1V2.82z"></path>
       <path d="M0 11.5a.5.5 0 0 1 .5-.5H4a.5.5 0 0 1 0 1H.5a.5.5 0 0 1-.5-.5zm0-4A.5.5 0 0 1 .5 7H8a.5.5 0 0 1 0 1H.5a.5.5 0 0 1-.5-.5zm0-4A.5.5 0 0 1 .5 3H8a.5.5 0 0 1 0 1H.5a.5.5 0 0 1-.5-.5z" fill-rule="evenodd"></path>
     </svg>
-    <svg id="ml-btn-heart" viewBox="0 0 16 16" class="color1 bi bi-suit-heart" fill="currentColor" height="14" width="14" xmlns="http://www.w3.org/2000/svg">
-      <path d="m8 6.236-.894-1.789c-.222-.443-.607-1.08-1.152-1.595C5.418 2.345 4.776 2 4 2 2.324 2 1 3.326 1 4.92c0 1.211.554 2.066 1.868 3.37.337.334.721.695 1.146 1.093C5.122 10.423 6.5 11.717 8 13.447c1.5-1.73 2.878-3.024 3.986-4.064.425-.398.81-.76 1.146-1.093C14.446 6.986 15 6.131 15 4.92 15 3.326 13.676 2 12 2c-.777 0-1.418.345-1.954.852-.545.515-.93 1.152-1.152 1.595L8 6.236zm.392 8.292a.513.513 0 0 1-.784 0c-1.601-1.902-3.05-3.262-4.243-4.381C1.3 8.208 0 6.989 0 4.92 0 2.755 1.79 1 4 1c1.6 0 2.719 1.05 3.404 2.008.26.365.458.716.596.992a7.55 7.55 0 0 1 .596-.992C9.281 2.049 10.4 1 12 1c2.21 0 4 1.755 4 3.92 0 2.069-1.3 3.288-3.365 5.227-1.193 1.12-2.642 2.48-4.243 4.38z"></path>
-    </svg>
+    <div id="ml-btn-heart" style="cursor:pointer;display:flex;align-items:center;justify-content:center;">
+      <svg id="ml-icon-heart-empty" viewBox="0 0 16 16" class="color1 bi bi-suit-heart" fill="currentColor" height="14" width="14" xmlns="http://www.w3.org/2000/svg">
+        <path d="m8 6.236-.894-1.789c-.222-.443-.607-1.08-1.152-1.595C5.418 2.345 4.776 2 4 2 2.324 2 1 3.326 1 4.92c0 1.211.554 2.066 1.868 3.37.337.334.721.695 1.146 1.093C5.122 10.423 6.5 11.717 8 13.447c1.5-1.73 2.878-3.024 3.986-4.064.425-.398.81-.76 1.146-1.093C14.446 6.986 15 6.131 15 4.92 15 3.326 13.676 2 12 2c-.777 0-1.418.345-1.954.852-.545.515-.93 1.152-1.152 1.595L8 6.236zm.392 8.292a.513.513 0 0 1-.784 0c-1.601-1.902-3.05-3.262-4.243-4.381C1.3 8.208 0 6.989 0 4.92 0 2.755 1.79 1 4 1c1.6 0 2.719 1.05 3.404 2.008.26.365.458.716.596.992a7.55 7.55 0 0 1 .596-.992C9.281 2.049 10.4 1 12 1c2.21 0 4 1.755 4 3.92 0 2.069-1.3 3.288-3.365 5.227-1.193 1.12-2.642 2.48-4.243 4.38z"></path>
+      </svg>
+      <svg id="ml-icon-heart-filled" viewBox="0 0 16 16" class="color1 bi bi-suit-heart-fill hidden" fill="currentColor" height="14" width="14" xmlns="http://www.w3.org/2000/svg">
+        <path d="M4 1c2.21 0 4 1.755 4 3.92C8 2.755 9.79 1 12 1s4 1.755 4 3.92c0 3.263-3.234 4.414-7.608 9.608a.513.513 0 0 1-.784 0C3.234 9.334 0 8.183 0 4.92 0 2.755 1.79 1 4 1z"></path>
+      </svg>
+    </div>
   </div>
 </div>`;
 
@@ -2171,7 +2222,7 @@ $(() => {
         const mlBtnPrev = mlCard.querySelector('#ml-btn-prev') as SVGElement;
         const mlBtnNext = mlCard.querySelector('#ml-btn-next') as SVGElement;
         const mlBtnPlaylist = mlCard.querySelector('#ml-btn-playlist') as SVGElement;
-        const mlBtnHeart = mlCard.querySelector('#ml-btn-heart') as SVGElement;
+        const mlBtnHeart = mlCard.querySelector('#ml-btn-heart') as HTMLElement;
         const mlBtnGear = mlCard.querySelector('#ml-btn-settings') as SVGElement;
         const mlBtnFavList = mlCard.querySelector('#ml-btn-fav-list') as SVGElement;
         const mlBtnSearch = mlCard.querySelector('#ml-btn-search') as SVGElement;
@@ -2203,6 +2254,8 @@ $(() => {
         syncMlPlayIcon();
         // 初始同步循环模式图标
         syncMlRepeatIcon();
+        // 初始同步收藏爱心图标
+        syncMlFavIcon();
 
         // 同步当前歌曲信息 + 监听后续变化
         syncMoonlightInfo();
@@ -2274,6 +2327,26 @@ $(() => {
         } else {
           mlPlay.classList.remove('hidden');
           mlPause.classList.add('hidden');
+        }
+      }
+
+      /** 同步月光白收藏爱心图标 */
+      function syncMlFavIcon() {
+        if (!mlCard) return;
+        const mlHeartEmpty = mlCard.querySelector('#ml-icon-heart-empty') as HTMLElement;
+        const mlHeartFilled = mlCard.querySelector('#ml-icon-heart-filled') as HTMLElement;
+        if (!mlHeartEmpty || !mlHeartFilled) return;
+        // 检查默认主题 btn-fav 是否处于收藏态
+        const defBtnFav = iframeDoc.getElementById('btn-fav');
+        const isFav = defBtnFav?.classList.contains('fav-active');
+        if (isFav) {
+          mlHeartEmpty.classList.add('hidden');
+          mlHeartFilled.classList.remove('hidden');
+          mlHeartFilled.style.fill = '#f87171';
+        } else {
+          mlHeartEmpty.classList.remove('hidden');
+          mlHeartFilled.classList.add('hidden');
+          mlHeartFilled.style.fill = '';
         }
       }
 
@@ -3355,6 +3428,7 @@ $(() => {
           heartFilled.classList.add('hidden');
           btnFav.classList.remove('fav-active');
         }
+        syncMlFavIcon();
       }
 
       // 初始化收藏列表
@@ -3514,24 +3588,19 @@ $(() => {
         const allResults: SearchResult[] = [];
 
         try {
-          // 先搜网易云（前5条取3可用）
-          const neteaseResults = await searchPlatform('netease', keyword, 5, 3, signal);
-          allResults.push(...neteaseResults);
+          // 两个平台并行搜索（各自内部也并行校验），大幅缩短总耗时
+          const [neteaseResults, tencentResults] = await Promise.all([
+            searchPlatform('netease', keyword, 5, 3, signal),
+            searchPlatform('tencent', keyword, 5, 3, signal),
+          ]);
+          allResults.push(...neteaseResults, ...tencentResults);
 
-          // 渲染阶段性结果
           if (!signal.aborted) {
             if (allResults.length > 0) {
               renderSearchResults(allResults);
+            } else {
+              searchResults.innerHTML = '<div class="search-placeholder">未找到可播放的歌曲，换个关键词试试</div>';
             }
-            searchResults.insertAdjacentHTML('beforeend', '<div class="search-loading">继续搜索QQ音乐...</div>');
-          }
-
-          // 再搜QQ音乐（前5条取3可用）
-          const tencentResults = await searchPlatform('tencent', keyword, 5, 3, signal);
-          allResults.push(...tencentResults);
-
-          if (!signal.aborted) {
-            renderSearchResults(allResults);
           }
           clearTimeout(searchTimeout);
         } catch (err: any) {
