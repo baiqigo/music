@@ -3,7 +3,7 @@
 Goal: 在 SillyTavern 中完成 JS 音乐播放器扩展的三项核心能力：可移动悬浮球 UI（折叠/展开、拖拽、主页/设置页切换）、离线与在线双模式播放、基于 MVU 变量
 `世界.当前剧情阶段` 的自动切歌；并维护四阶段离线曲库映射。
 
-InProgress: 无（等待用户下一步指令）
+InProgress: 无（已完成移动端适配，等待用户上传 GitHub 后确认）
 
 Done:
 
@@ -239,11 +239,22 @@ Done:
   - 收藏按钮：月光白卡片 `#ml-btn-heart` 从单 SVG 改为双 SVG 互斥（空心/实心），新增 `syncMlFavIcon()` 同步收藏态。
   - 搜索速度优化：`searchPlatform`
     内部 URL 获取+音频校验从顺序改为并行（`Promise.allSettled`），双平台搜索从顺序改为并行（`Promise.all`）。
+- **移动端适配 + 樱花粉移除 + Firefox 兼容修复**（2026-04-13T02:30）：
+  - 删除樱花粉主题入口，`THEMES` 从三态改为两态（默认 ↔ 月光白）。
+  - 修复快速点击分屏 bug：`themeSwitching` 标志位原本声明但从未设为
+    `true`，补全双重锁逻辑（350ms 非动画锁 + 动画期间锁）。
+  - 修复 Firefox 移动端月光白转场动画不触发：时间源从 `performance.now()` 改为 `Date.now()`（绕过 Fingerprinting
+    Protection 精度限制）。
+  - 性能优化：动画元素定位从 `left/top` 改为 `transform: translate()` 走 GPU 合成层；添加 `will-change` 提示；预计算
+    `diag`/`sqrt2`。
+  - 淡出 keyframes 从 `transform: scale()` 改为 `filter` + `opacity`，避免覆盖 translate 定位。
+  - 代码备份至 `backup_20260413_0230/`（含源码 index.ts + 构建产物 index.js）。
+  - 发布路径更新为 `https://testingcf.jsdelivr.net/gh/baiqigo/music@main/index.js`。
 
 NextStep:
 
-1. **主题美化**：为樱花粉定义具体配色方案。
-2. **继续 UI 美化**（悬浮球动画等后续美化）。
+1. 用户上传 `dist/alice-music-float/index.js` 到 GitHub 仓库 `baiqigo/music` 后，刷新 CDN 验证。
+2. 如有后续移动端问题反馈，继续修复。
 
 核心功能清单（已全部完成，UI 美化时禁止改动以下逻辑）:
 
@@ -462,5 +473,8 @@ Bug 记录:
 13. ~~**月光白主题隐藏 overlay-page 导致设置页不可用**~~（已修复，CSS 不再隐藏 overlay-page/toast-container）。
 14. ~~**月光白搜索页/列表页元素白色不可见**~~（已修复，搜索图标/按钮/提示/序号全部添加深色覆盖）。
 15. ~~**月光白卡片收藏按钮无视觉反馈**~~（已修复，改为双 SVG 互斥 + syncMlFavIcon 同步）。
+16. ~~**Firefox 移动端快速点击主题切换导致分屏**~~（已修复，`themeSwitching` 双重锁 + 350ms 非动画延迟）。
+17. ~~**Firefox 移动端月光白转场动画不触发/卡死**~~（已修复，`Date.now()` 替代
+    `performance.now()`，`transform: translate()` 替代 `left/top`）。
 
-LastUpdated: 2026-04-12T00:08:00+08:00
+LastUpdated: 2026-04-13T02:30:00+08:00

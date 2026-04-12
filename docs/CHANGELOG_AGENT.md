@@ -1,5 +1,39 @@
 # CHANGELOG_AGENT
 
+## 2026-04-13T02:30:00+08:00
+
+### 移动端适配：樱花粉移除 + Firefox 转场动画修复 + 快速点击分屏修复 + GPU 合成优化
+
+- **删除樱花粉主题入口**：
+  - `THEMES` 从 `['默认', '月光白', '樱花粉']` 改为 `['默认', '月光白']`。
+  - 删除 `.float-panel.theme-sakura` CSS 占位规则。
+  - 删除 `applyTheme` 中 `theme-sakura` class 添加逻辑。
+  - 旧 localStorage `'樱花粉'` 值自动回退默认（`indexOf` 返回 -1，不执行恢复）。
+- **修复快速点击分屏 bug（P0/移动端）**：
+  - `themeSwitching` 标志位原本声明为 `false` 但**从未设为 `true`**，完全不起作用。
+  - 月光白转场动画路径：`themeSwitching = true`，`onComplete` 回调中 `= false`。
+  - 非动画切换路径（月光白→默认）：`themeSwitching = true`，`setTimeout(350ms)` 后 `= false`。
+  - `themeToggle.click` 入口 `if (themeSwitching || moonTransitionRunning) return` 双重拦截。
+- **修复 Firefox 移动端转场动画不触发/卡死（P0）**：
+  - **根因**：Firefox 移动端 srcdoc iframe 中 `performance.now()` 受 Fingerprinting
+    Protection 影响，精度降至 ~100ms（返回值以 100ms 为步长取整），导致连续 rAF 帧间 `elapsed` 增量为 0， `rawT`
+    始终不变 → 动画视觉上静止不动。
+  - **修复**：时间源从 `performance.now()` 改为 `Date.now()`（不受 FPP 影响，1ms 精度）。
+- **GPU 合成优化（Firefox 移动端性能）**：
+  - 月亮和星星定位从 `style.left/top`（触发 layout reflow）改为 `style.transform = translate()`（GPU 合成层）。
+  - `.moon-wrapper` 和 `.transit-star` 添加 `will-change: transform, opacity`。
+  - `.moon-transition-overlay` 添加 `will-change: contents`。
+  - 预计算 `diag`（对角线长度）和 `sqrt2`，避免每帧 `Math.sqrt()` 调用。
+- **淡出动画兼容修复**：
+  - `@keyframes moon-fade-out`：从 `transform: scale(1.15)` 改为 `filter: blur(2px)` + `opacity: 0`，避免 CSS
+    animation 的 `transform` 覆盖 JS 设置的 `translate()` 定位导致月亮跳回 (0,0)。
+  - `@keyframes star-twinkle-out`：同理，从 `transform: scale()` 改为 `filter: brightness() blur()`。
+- **发布路径更新**：import 地址从 `http://127.0.0.1:5500/dist/...` 更新为
+  `https://testingcf.jsdelivr.net/gh/baiqigo/music@main/index.js`。
+- **代码备份**：`backup_20260413_0230/`（源码 index.ts + 构建产物 index.js）。
+- **改动范围**：仅 `src/alice-music-float/index.ts`（CSS 5 行修改，JS ~60 行重写/修复）。
+- **构建结果**：`npm run build:dev` 所有入口 `compiled successfully`。
+
 ## 2026-04-12T00:08:00+08:00
 
 ### 月光白搜索页/列表页配色修复 + 收藏按钮修复 + 搜索并行加速
