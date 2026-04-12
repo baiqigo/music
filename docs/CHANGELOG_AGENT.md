@@ -1,5 +1,26 @@
 # CHANGELOG_AGENT
 
+## 2026-04-13T02:51:00+08:00
+
+### 发布前最终全面代码审查（第四轮）+ 冗余 CSS 清理
+
+- **审查范围**：全量 3722 行源码（`src/alice-music-float/index.ts`），9 大审查维度逐项检查。
+- **审查维度及结果**：
+  1. HTML 结构完整性（DOM ID/类名一致性）— 通过
+  2. CSS 样式（死代码/冲突/遗漏）— 发现 1 处冗余（见下方清理）
+  3. JS 核心逻辑（事件绑定/内存泄漏/竞态条件）— 通过
+  4. localStorage 持久化（读写一致性/异常处理）— 通过
+  5. Audio 引擎（资源释放/错误处理/ended 事件链）— 通过
+  6. 在线搜索/播放（AbortController/超时/URL 校验）— 通过
+  7. MVU 集成（初始化/事件监听/卸载清理）— 通过
+  8. 月光白主题/转场动画（DOM 清理/内存泄漏）— 通过
+  9. 构建验证（webpack build:dev 所有入口 compiled successfully）— 通过
+- **冗余 CSS 清理**：删除 `.float-ball i` 选择器（4 行 CSS）。悬浮球图标在 UI 美化批次一中从 `<i>`
+  改为 SVG，该规则不再匹配任何 DOM 元素。
+- **结论**：未发现影响功能的 bug。代码可以正式发布。
+- **改动范围**：仅 `src/alice-music-float/index.ts`（删除 5 行冗余 CSS）。
+- **构建结果**：`npm run build:dev` 所有入口 `compiled successfully`。
+
 ## 2026-04-13T02:30:00+08:00
 
 ### 移动端适配：樱花粉移除 + Firefox 转场动画修复 + 快速点击分屏修复 + GPU 合成优化

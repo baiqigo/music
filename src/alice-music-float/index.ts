@@ -551,11 +551,6 @@ html, body {
 .float-ball:active {
   cursor: grabbing;
 }
-.float-ball i {
-  color: #fff;
-  font-size: 20px;
-  pointer-events: none;
-}
 .ball-music-icon {
   width: 26px;
   height: 26px;

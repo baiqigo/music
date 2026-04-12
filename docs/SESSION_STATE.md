@@ -3,7 +3,7 @@
 Goal: 在 SillyTavern 中完成 JS 音乐播放器扩展的三项核心能力：可移动悬浮球 UI（折叠/展开、拖拽、主页/设置页切换）、离线与在线双模式播放、基于 MVU 变量
 `世界.当前剧情阶段` 的自动切歌；并维护四阶段离线曲库映射。
 
-InProgress: 无（已完成移动端适配，等待用户上传 GitHub 后确认）
+InProgress: 无（发布前最终全面代码审查已完成，可以发布）
 
 Done:
 
@@ -250,11 +250,16 @@ Done:
   - 淡出 keyframes 从 `transform: scale()` 改为 `filter` + `opacity`，避免覆盖 translate 定位。
   - 代码备份至 `backup_20260413_0230/`（含源码 index.ts + 构建产物 index.js）。
   - 发布路径更新为 `https://testingcf.jsdelivr.net/gh/baiqigo/music@main/index.js`。
+- **发布前最终全面代码审查（第四轮）**（2026-04-13T02:51）：
+  - 全量审查 3717 行源码（删除 5 行冗余 CSS 后），9 大审查维度全部通过。
+  - 清理 1 处冗余 CSS（`.float-ball i` 选择器，悬浮球图标已从 `<i>` 改为 SVG，该规则不匹配任何元素）。
+  - 未发现影响功能的 bug，代码可以发布。
+  - webpack build:dev 所有入口 `compiled successfully`。
 
 NextStep:
 
 1. 用户上传 `dist/alice-music-float/index.js` 到 GitHub 仓库 `baiqigo/music` 后，刷新 CDN 验证。
-2. 如有后续移动端问题反馈，继续修复。
+2. 代码审查已通过，可以正式发布。
 
 核心功能清单（已全部完成，UI 美化时禁止改动以下逻辑）:
 
@@ -456,6 +461,19 @@ Verification:
   - localStorage 主题已重置为默认。
   - 代码备份至 `backup_20260411_0205/index.ts`。
 
+- **发布前最终全面代码审查（第四轮）**（2026-04-13T02:51）：
+  - 全量审查 3722 行源码（9 大审查维度）：
+    1. HTML 结构完整性（DOM ID/类名一致性）— **通过**
+    2. CSS 样式（死代码/冲突/遗漏）— 发现 1 处冗余 `.float-ball i`（已清理）
+    3. JS 核心逻辑（事件绑定/内存泄漏/竞态条件）— **通过**
+    4. localStorage 持久化（读写一致性/异常处理）— **通过**
+    5. Audio 引擎（资源释放/错误处理/ended 事件链）— **通过**
+    6. 在线搜索/播放（AbortController/超时/URL 校验）— **通过**
+    7. MVU 集成（初始化/事件监听/卸载清理）— **通过**
+    8. 月光白主题/转场动画（DOM 清理/内存泄漏）— **通过**
+    9. 构建验证（webpack build:dev 所有入口 compiled successfully）— **通过**
+  - 未发现影响功能的 bug。代码可以发布。
+
 Bug 记录:
 
 1. ~~**粘手 bug v1/v2**~~（已修复 v3）。
@@ -477,4 +495,4 @@ Bug 记录:
 17. ~~**Firefox 移动端月光白转场动画不触发/卡死**~~（已修复，`Date.now()` 替代
     `performance.now()`，`transform: translate()` 替代 `left/top`）。
 
-LastUpdated: 2026-04-13T02:30:00+08:00
+LastUpdated: 2026-04-13T02:51:00+08:00
