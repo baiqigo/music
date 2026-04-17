@@ -1,5 +1,31 @@
 # CHANGELOG_AGENT
 
+## 2026-04-18T05:36:00+08:00
+
+### 在线搜索 API 失效调研 + 备选方案收集
+
+- **当前 API 可用性验证**：
+  - `api.vkeys.cn`（落月 API 主域名）：PowerShell `Invoke-WebRequest` 10 秒超时，**不可用**。
+  - `api.epdd.cn`（落月 API 备用域名）：连接被关闭，**不可用**。
+  - 在线搜索播放功能完全瘫痪，离线播放不受影响。
+  - 落月 API 可能因 V3 升级导致 V2 端点 (`/v2/music/...`) 失效，待用户检查 `doc.vkeys.cn` 确认。
+- **go-music-dl 源码分析**（本地 `E:\xiazai\go-music-dl-main`）：
+  - 核心库 `github.com/guohuiyuan/music-lib`（v1.0.8-dev）封装 11 个平台的官方 API 直连。
+  - 网易云：`music.163.com/api/linux/forward`（LinuxAPI 加密）、`weapi/song/enhance/player/url`（WeAPI 加密）、EAPI 加密。
+  - QQ音乐：`c.y.qq.com/soso/fcgi-bin/search_for_qq_cp`（GET，无加密）、`u.y.qq.com/cgi-bin/musicu.fcg`（POST JSON）。
+  - 酷狗：`songsearch.kugou.com/song_search_v2`（GET，无加密）、`m.kugou.com/app/i/getSongInfo.php`（GET）。
+  - Go 后端代理模式（Gin 框架，`/music/search` → `/music/download` 路由），前端不能直接复用。
+- **新发现的开源项目**：
+  - **metowolf/Meting**（2k
+    stars，MIT）：纯 JS（Node.js）多平台音乐 API 框架，零外部依赖，内置各平台加密算法，支持网易云/QQ/酷狗/酷我/百度，统一接口（`search`/`song`/`url`/`lyric`/`pic`）。go-music-dl 的 README 致谢中也引用了此项目。
+  - **ELDment/Meting-Agent**（74 stars）：基于 Meting 的 MCP Server / Skill 封装，支持网易云/QQ/酷狗/酷我。
+  - **UnblockNeteaseMusic/server**（7.7k
+    stars，LGPL-3.0）：解锁网易云灰色歌曲，内置 QQ/酷狗/酷我/波点/咪咕/B站/YouTube 等多音源。
+  - **injahow/meting-api**：Meting 的 RESTful API 封装（可自部署为 HTTP 服务）。
+- **核心结论**：所有可用方案均为 Node.js 服务端库，前端浏览器 fetch 直调各平台官方 API 受 CORS 限制，需聚合 API 服务或 CORS 代理。
+- **改动范围**：仅 `docs/` 三个文档（SESSION_STATE.md、CHANGELOG_AGENT.md、DECISIONS.md）。
+- **无代码改动**。
+
 ## 2026-04-13T02:51:00+08:00
 
 ### 发布前最终全面代码审查（第四轮）+ 冗余 CSS 清理

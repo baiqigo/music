@@ -3,7 +3,7 @@
 Goal: 在 SillyTavern 中完成 JS 音乐播放器扩展的三项核心能力：可移动悬浮球 UI（折叠/展开、拖拽、主页/设置页切换）、离线与在线双模式播放、基于 MVU 变量
 `世界.当前剧情阶段` 的自动切歌；并维护四阶段离线曲库映射。
 
-InProgress: 无（发布前最终全面代码审查已完成，可以发布）
+InProgress: 在线搜索 API 替换方案调研与选型（api.vkeys.cn 已失效，需要备选 API）
 
 Done:
 
@@ -255,11 +255,22 @@ Done:
   - 清理 1 处冗余 CSS（`.float-ball i` 选择器，悬浮球图标已从 `<i>` 改为 SVG，该规则不匹配任何元素）。
   - 未发现影响功能的 bug，代码可以发布。
   - webpack build:dev 所有入口 `compiled successfully`。
+- **在线搜索 API 失效调研**（2026-04-18T05:30）：
+  - 验证 `api.vkeys.cn` 主域名和备用域名 `api.epdd.cn` 均已超时不可用，在线搜索播放功能完全瘫痪。
+  - 分析 `guohuiyuan/go-music-dl`（2.4k stars）源码：核心库 `music-lib`
+    直连各平台官方 API（网易云需 LinuxAPI/WeAPI/EAPI 加密，QQ音乐和酷狗无加密但需特定 Referer），Go 后端代理模式，不能直接被前端 JS 复用。
+  - 发现 `metowolf/Meting`（2k
+    stars）：纯 JS（Node.js）多平台音乐 API 框架，零外部依赖，内置加密算法，支持网易云/QQ/酷狗/酷我/百度，统一接口（search/song/url/lyric/pic），MIT 许可证。
+  - 发现 `ELDment/Meting-Agent`（74 stars）：基于 Meting 的 MCP Server 封装。
+  - 发现 `UnblockNeteaseMusic/server`（7.7k stars）：内置 QQ/酷狗/酷我/波点/咪咕/B站等多音源。
+  - 核心问题：所有方案均为 Node.js 服务端库，前端浏览器 fetch 直调官方 API 受 CORS 限制。需要找到可用的聚合 API 服务或自建代理。
+  - 落月 API 可能因 V3 升级导致 V2 端点失效，需检查文档确认。
 
 NextStep:
 
-1. 用户上传 `dist/alice-music-float/index.js` 到 GitHub 仓库 `baiqigo/music` 后，刷新 CDN 验证。
-2. 代码审查已通过，可以正式发布。
+1. 用户检查落月 API 文档（`doc.vkeys.cn`），确认 V3 是否有新端点格式。
+2. 用户下载 `metowolf/Meting` 源码到本地，下次会话分析其加密算法和 API 逻辑，评估前端移植或代理方案。
+3. 根据调研结果确定最终 API 替换方案并实施集成。
 
 核心功能清单（已全部完成，UI 美化时禁止改动以下逻辑）:
 
@@ -495,4 +506,4 @@ Bug 记录:
 17. ~~**Firefox 移动端月光白转场动画不触发/卡死**~~（已修复，`Date.now()` 替代
     `performance.now()`，`transform: translate()` 替代 `left/top`）。
 
-LastUpdated: 2026-04-13T02:51:00+08:00
+LastUpdated: 2026-04-18T05:36:00+08:00
