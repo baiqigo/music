@@ -3678,7 +3678,18 @@ $(() => {
             searchPlatform('netease', keyword, 5, 3, signal),
             searchPlatform('tencent', keyword, 10, 5, signal),
           ]);
-          allResults.push(...neteaseResults, ...tencentResults);
+
+          // 双平台交替排列：QQ第1→网易第1→QQ第2→网易第2→…
+          // 确保两个平台的最佳结果都在最前面，用户前两条即可看到各平台正版
+          {
+            const a = tencentResults,
+              b = neteaseResults;
+            const maxLen = Math.max(a.length, b.length);
+            for (let i = 0; i < maxLen; i++) {
+              if (i < a.length) allResults.push(a[i]);
+              if (i < b.length) allResults.push(b[i]);
+            }
+          }
 
           if (!signal.aborted) {
             if (allResults.length > 0) {
