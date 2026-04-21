@@ -272,15 +272,27 @@ async function searchPlatform(
 ): Promise<SearchResult[]> {
   const sourceName = platform === 'netease' ? '网易云' : 'QQ音乐';
   const LUOYUE_BASE = 'https://api.vkeys.cn';
-  const METING_BASE = 'https://meting-api-omega.vercel.app/api';
+  // 网易云双实例：公共实例为主，私有实例为备
+  const METING_INSTANCES = ['https://meting-api-omega.vercel.app/api', 'https://qq-music-beige.vercel.app/api'];
 
-  // —— 网易云：使用 Meting API（Vercel），搜索结果自带可播放 URL ——
+  // —— 网易云：使用 Meting API（Vercel），多实例 fallback ——
   if (platform === 'netease') {
-    const searchResp = await fetch(`${METING_BASE}?server=netease&type=search&id=${encodeURIComponent(keyword)}`, {
-      signal,
-    });
-    const searchJson: any[] = await searchResp.json();
-    if (!Array.isArray(searchJson)) return [];
+    let searchJson: any[] = [];
+    for (const metingBase of METING_INSTANCES) {
+      try {
+        const searchResp = await fetch(`${metingBase}?server=netease&type=search&id=${encodeURIComponent(keyword)}`, {
+          signal,
+        });
+        const json = await searchResp.json();
+        if (Array.isArray(json) && json.length > 0) {
+          searchJson = json;
+          break; // 成功则跳出，不再尝试下一个实例
+        }
+      } catch {
+        continue; // 失败则尝试下一个实例
+      }
+    }
+    if (searchJson.length === 0) return [];
 
     // Meting 搜索结果格式: { title, author, pic, url, lrc }
     // url 字段为 Meting API 代理地址（302→网易云 CDN MP3），可直接作为 Audio src
@@ -406,8 +418,12 @@ async function checkApiStatus(): Promise<'ok' | 'fail'> {
       fetch('https://api.vkeys.cn/music/tencent/search/song?keyword=test&limit=1', { signal: ctrl.signal })
         .then(r => r.json())
         .then(j => j?.code === 0),
-      // Meting API 网易云
+      // Meting API 网易云（公共实例）
       fetch('https://meting-api-omega.vercel.app/api?server=netease&type=search&id=test', { signal: ctrl.signal })
+        .then(r => r.json())
+        .then(j => Array.isArray(j)),
+      // Meting API 网易云（私有实例备份）
+      fetch('https://qq-music-beige.vercel.app/api?server=netease&type=search&id=test', { signal: ctrl.signal })
         .then(r => r.json())
         .then(j => Array.isArray(j)),
     ]);
@@ -3655,8 +3671,19 @@ $(() => {
 
       /** 执行搜索 */
       async function doSearch() {
-        const keyword = searchInput.value.trim();
-        if (!keyword) return;
+        const rawKeyword = searchInput.value.trim();
+        if (!rawKeyword) return;
+
+        // 搜索关键词预处理：模糊化
+        const keyword = rawKeyword
+          // 1. 英文连写拆分：在小写→大写交界处加空格（loveSong → love Song）
+          .replace(/([a-z])([A-Z])/g, '$1 $2')
+          // 2. 中英文交界处加空格（方大同lovesong → 方大同 lovesong）
+          .replace(/([\u4e00-\u9fff])([a-zA-Z])/g, '$1 $2')
+          .replace(/([a-zA-Z])([\u4e00-\u9fff])/g, '$1 $2')
+          // 3. 多余空格合并
+          .replace(/\s+/g, ' ')
+          .trim();
 
         // 取消上次未完成的搜索
         if (searchAbort) {
