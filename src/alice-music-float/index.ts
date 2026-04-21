@@ -271,68 +271,96 @@ async function searchPlatform(
   signal: AbortSignal,
 ): Promise<SearchResult[]> {
   const sourceName = platform === 'netease' ? '网易云' : 'QQ音乐';
-  const API_BASE = 'https://api.vkeys.cn';
+  const LUOYUE_BASE = 'https://api.vkeys.cn';
+  const METING_BASE = 'https://meting-api-omega.vercel.app/api';
 
-  // 1. 搜索（QQ音乐用 V3 端点，网易云保留 V2）
-  let items: any[] = [];
-  if (platform === 'tencent') {
-    const searchResp = await fetch(
-      `${API_BASE}/music/tencent/search/song?keyword=${encodeURIComponent(keyword)}&limit=${maxCheck}`,
-      { signal },
-    );
-    const searchJson = await searchResp.json();
-    // V3 成功 code 为 0，数据在 data.list 中
-    items =
-      searchJson?.code === 0 && Array.isArray(searchJson?.data?.list) ? searchJson.data.list.slice(0, maxCheck) : [];
-  } else {
-    // 网易云 V2
-    const searchResp = await fetch(`${API_BASE}/v2/music/netease?word=${encodeURIComponent(keyword)}`, { signal });
-    const searchJson = await searchResp.json();
-    items = Array.isArray(searchJson?.data) ? searchJson.data.slice(0, maxCheck) : [];
+  // —— 网易云：使用 Meting API（Vercel），搜索结果自带可播放 URL ——
+  if (platform === 'netease') {
+    const searchResp = await fetch(`${METING_BASE}?server=netease&type=search&id=${encodeURIComponent(keyword)}`, {
+      signal,
+    });
+    const searchJson: any[] = await searchResp.json();
+    if (!Array.isArray(searchJson)) return [];
+
+    // Meting 搜索结果格式: { title, author, pic, url, lrc }
+    // url 字段为 Meting API 代理地址（302→网易云 CDN MP3），可直接作为 Audio src
+    const candidates = searchJson.slice(0, maxCheck);
+    const tasks = candidates.map(async (item: any): Promise<SearchResult | null> => {
+      try {
+        if (signal.aborted) return null;
+        const audioUrl = item.url;
+        if (!audioUrl) return null;
+
+        const ok = await checkAudioPlayable(audioUrl);
+        if (!ok) return null;
+
+        return {
+          title: item.title || '未知歌曲',
+          artist: (item.author || '未知歌手').replace(/\s*\/\s*/g, ' / '),
+          url: audioUrl,
+          cover: item.pic || '',
+          source: sourceName,
+        };
+      } catch {
+        return null;
+      }
+    });
+
+    const settled = await Promise.allSettled(tasks);
+    const results: SearchResult[] = [];
+    for (const s of settled) {
+      if (results.length >= maxValid) break;
+      if (s.status === 'fulfilled' && s.value) results.push(s.value);
+    }
+    return results;
   }
 
-  // 2. 并行获取播放地址 + 校验可用性（所有候选同时进行）
+  // —— QQ音乐：使用落月 API V3 ——
+  const searchResp = await fetch(
+    `${LUOYUE_BASE}/music/tencent/search/song?keyword=${encodeURIComponent(keyword)}&limit=${maxCheck}`,
+    { signal },
+  );
+  const searchJson = await searchResp.json();
+  const items: any[] =
+    searchJson?.code === 0 && Array.isArray(searchJson?.data?.list) ? searchJson.data.list.slice(0, maxCheck) : [];
+
+  // 并行获取播放地址 + 校验可用性
+  const isValidUrl = (u: string) => {
+    try {
+      return !!u && new URL(u).pathname.length > 1;
+    } catch {
+      return false;
+    }
+  };
+
   const tasks = items
-    .filter((item: any) => (platform === 'tencent' ? item.songID : item.id))
+    .filter((item: any) => item.songID)
     .map(async (item: any): Promise<SearchResult | null> => {
       try {
         if (signal.aborted) return null;
 
-        let audioUrl: string;
-        let title: string;
-        let artist: string;
-        let cover: string;
+        // 先请求 quality=0（试听，覆盖面最广）
+        const urlResp0 = await fetch(
+          `${LUOYUE_BASE}/music/tencent/song/link?id=${encodeURIComponent(item.songID)}&quality=0`,
+          { signal },
+        );
+        const urlJson0 = await urlResp0.json();
+        let audioUrl = urlJson0?.code === 0 && isValidUrl(urlJson0?.data?.url) ? urlJson0.data.url : '';
 
-        if (platform === 'tencent') {
-          // V3：播放链接端点，quality=6 标准 128kbps，付费歌曲 fallback quality=0 试听
-          const urlResp = await fetch(
-            `${API_BASE}/music/tencent/song/link?id=${encodeURIComponent(item.songID)}&quality=6`,
-            { signal },
-          );
-          const urlJson = await urlResp.json();
-          audioUrl = urlJson?.code === 0 ? urlJson?.data?.url : '';
-
-          // 如果 quality=6 无 URL（可能是付费歌曲），尝试 quality=0 试听
-          if (!audioUrl) {
-            const fallbackResp = await fetch(
-              `${API_BASE}/music/tencent/song/link?id=${encodeURIComponent(item.songID)}&quality=0`,
+        // 尝试 quality=6（128kbps）升级
+        if (audioUrl) {
+          try {
+            const urlResp6 = await fetch(
+              `${LUOYUE_BASE}/music/tencent/song/link?id=${encodeURIComponent(item.songID)}&quality=6`,
               { signal },
             );
-            const fallbackJson = await fallbackResp.json();
-            audioUrl = fallbackJson?.code === 0 ? fallbackJson?.data?.url : '';
+            const urlJson6 = await urlResp6.json();
+            if (urlJson6?.code === 0 && isValidUrl(urlJson6?.data?.url)) {
+              audioUrl = urlJson6.data.url;
+            }
+          } catch {
+            /* 升级失败则保留 quality=0 */
           }
-
-          title = item.title || '未知歌曲';
-          artist = item.singer || '未知歌手';
-          cover = item.cover || '';
-        } else {
-          // 网易云 V2
-          const urlResp = await fetch(`${API_BASE}/v2/music/netease?id=${encodeURIComponent(item.id)}`, { signal });
-          const urlJson = await urlResp.json();
-          audioUrl = urlJson?.data?.url || '';
-          title = item.song || item.name || item.title || '未知歌曲';
-          artist = item.singer || item.artist || '未知歌手';
-          cover = item.cover || '';
         }
 
         if (!audioUrl) return null;
@@ -340,7 +368,13 @@ async function searchPlatform(
         const ok = await checkAudioPlayable(audioUrl);
         if (!ok) return null;
 
-        return { title, artist, url: audioUrl, cover, source: sourceName };
+        return {
+          title: item.title || '未知歌曲',
+          artist: item.singer || '未知歌手',
+          url: audioUrl,
+          cover: item.cover || '',
+          source: sourceName,
+        };
       } catch {
         return null;
       }
@@ -359,23 +393,28 @@ async function searchPlatform(
 }
 
 /**
- * API 可达性检测：向 api.vkeys.cn 发送一个最小搜索请求，5 秒超时。
- * 优先使用 V3 QQ 音乐端点检测，V3 不可用时 fallback 到 V2 网易云。
+ * API 可达性检测：同时检测落月 V3（QQ音乐）和 Meting API（网易云），任一可用即返回 'ok'。
  * 返回 'ok' | 'fail'。
  */
 async function checkApiStatus(): Promise<'ok' | 'fail'> {
   try {
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 5000);
-    // 优先用 V3 QQ 音乐搜索端点检测
-    const resp = await fetch('https://api.vkeys.cn/music/tencent/search/song?keyword=test&limit=1', {
-      signal: ctrl.signal,
-    });
+    const timer = setTimeout(() => ctrl.abort(), 6000);
+
+    const checks = await Promise.allSettled([
+      // 落月 V3 QQ 音乐
+      fetch('https://api.vkeys.cn/music/tencent/search/song?keyword=test&limit=1', { signal: ctrl.signal })
+        .then(r => r.json())
+        .then(j => j?.code === 0),
+      // Meting API 网易云
+      fetch('https://meting-api-omega.vercel.app/api?server=netease&type=search&id=test', { signal: ctrl.signal })
+        .then(r => r.json())
+        .then(j => Array.isArray(j)),
+    ]);
+
     clearTimeout(timer);
-    if (!resp.ok) return 'fail';
-    const json = await resp.json();
-    // V3 成功 code 为 0
-    return json?.code === 0 ? 'ok' : 'fail';
+    // 任一平台可用即返回 ok
+    return checks.some(c => c.status === 'fulfilled' && c.value) ? 'ok' : 'fail';
   } catch {
     return 'fail';
   }
@@ -3637,7 +3676,7 @@ $(() => {
           // 两个平台并行搜索（各自内部也并行校验），大幅缩短总耗时
           const [neteaseResults, tencentResults] = await Promise.all([
             searchPlatform('netease', keyword, 5, 3, signal),
-            searchPlatform('tencent', keyword, 5, 3, signal),
+            searchPlatform('tencent', keyword, 10, 5, signal),
           ]);
           allResults.push(...neteaseResults, ...tencentResults);
 
