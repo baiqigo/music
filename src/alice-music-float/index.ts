@@ -224,7 +224,7 @@ function checkAudioPlayable(url: string): Promise<boolean> {
       audio.removeAttribute('src');
       audio.load();
       resolve(false);
-    }, 3000);
+    }, 6000);
 
     audio.addEventListener(
       'loadedmetadata',
@@ -297,14 +297,12 @@ async function searchPlatform(
     // Meting 搜索结果格式: { title, author, pic, url, lrc }
     // url 字段为 Meting API 代理地址（302→网易云 CDN MP3），可直接作为 Audio src
     const candidates = searchJson.slice(0, maxCheck);
+    // Meting URL 是其自身代理地址（302→CDN），格式固定可信，跳过 checkAudioPlayable 避免超时
     const tasks = candidates.map(async (item: any): Promise<SearchResult | null> => {
       try {
         if (signal.aborted) return null;
         const audioUrl = item.url;
         if (!audioUrl) return null;
-
-        const ok = await checkAudioPlayable(audioUrl);
-        if (!ok) return null;
 
         return {
           title: item.title || '未知歌曲',
