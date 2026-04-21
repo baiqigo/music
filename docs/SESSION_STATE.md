@@ -3,7 +3,7 @@
 Goal: 在 SillyTavern 中完成 JS 音乐播放器扩展的三项核心能力：可移动悬浮球 UI（折叠/展开、拖拽、主页/设置页切换）、离线与在线双模式播放、基于 MVU 变量
 `世界.当前剧情阶段` 的自动切歌；并维护四阶段离线曲库映射。
 
-InProgress: 在线搜索 API 替换方案调研与选型（api.vkeys.cn 已失效，需要备选 API）
+InProgress: 落月 API V3 端点已验证可用，准备将代码从 V2 迁移到 V3（QQ音乐搜索+播放链接）
 
 Done:
 
@@ -265,12 +265,26 @@ Done:
   - 发现 `UnblockNeteaseMusic/server`（7.7k stars）：内置 QQ/酷狗/酷我/波点/咪咕/B站等多音源。
   - 核心问题：所有方案均为 Node.js 服务端库，前端浏览器 fetch 直调官方 API 受 CORS 限制。需要找到可用的聚合 API 服务或自建代理。
   - 落月 API 可能因 V3 升级导致 V2 端点失效，需检查文档确认。
+- **落月 API V2/V3 实测结果更新**（2026-04-21T21:12）：
+  - **V2 点歌 API 仍然可用**：`/v2/music/tencent?word=` 搜索 200 OK，`/v2/music/tencent?id=`
+    取播放地址部分可用（付费歌曲 35kbps，部分返回 500）。上次超时是网络波动，非 API 下线。
+  - **V2 分拆子接口已下线**：`/v2/music/tencent/search`、`/v2/music/tencent/url` 返回 404。
+  - **V3 搜索 API 完全可用**：`GET /music/tencent/search/song?keyword=告白气球` →
+    code:0，返回 songID/songMID/cover/pay/interval 等详细字段。
+  - **V3 播放链接 API 完全可用**：`GET /music/tencent/song/link?id=107192078&quality=0`
+    → 返回有效播放 URL。支持 quality 参数（0=试听35kbps，6=标准128kbps，8=HQ320kbps）。付费歌曲用 quality=0 可获取试听 URL。
+  - **V3 路径格式变化**：不再使用版本号前缀（`/v2/...` → `/music/...`），参数名变化（`word` → `keyword`，新增 `quality`
+    参数）。
+  - **V3 仅支持 QQ 音乐**，网易云音乐接口尚未上线。V2 的网易云点歌 API 仍可用作备用。
+  - Meting /
+    Meting-Agent 源码已下载到本地（`E:\xiazai\Meting-master`、`E:\xiazai\Meting-Agent-main`），供后续备用方案参考。
 
 NextStep:
 
-1. 用户检查落月 API 文档（`doc.vkeys.cn`），确认 V3 是否有新端点格式。
-2. 用户下载 `metowolf/Meting` 源码到本地，下次会话分析其加密算法和 API 逻辑，评估前端移植或代理方案。
-3. 根据调研结果确定最终 API 替换方案并实施集成。
+1. 将代码从 V2 迁移到 V3：QQ 音乐搜索改用 `/music/tencent/search/song?keyword=`，播放链接改用
+   `/music/tencent/song/link?id=&quality=`。
+2. 网易云音乐暂保留 V2 点歌 API（`/v2/music/netease?word=` / `?id=`），V3 网易云上线后再切换。
+3. 构建验证 + 浏览器测试在线搜索播放功能。
 
 核心功能清单（已全部完成，UI 美化时禁止改动以下逻辑）:
 
@@ -506,4 +520,4 @@ Bug 记录:
 17. ~~**Firefox 移动端月光白转场动画不触发/卡死**~~（已修复，`Date.now()` 替代
     `performance.now()`，`transform: translate()` 替代 `left/top`）。
 
-LastUpdated: 2026-04-18T05:36:00+08:00
+LastUpdated: 2026-04-21T21:12:00+08:00

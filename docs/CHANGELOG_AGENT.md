@@ -1,5 +1,29 @@
 # CHANGELOG_AGENT
 
+## 2026-04-21T21:12:00+08:00
+
+### 落月 API V2/V3 实测 + V3 端点验证通过
+
+- **V2 状态更正**：上次超时是网络波动，V2 点歌 API（`/v2/music/{platform}?word=` /
+  `?id=`）仍然可用。V2 分拆子接口（`/search`、`/url`）已下线返回 404。
+- **V3 搜索 API 实测通过**：
+  - `GET /music/tencent/search/song?keyword=告白气球&limit=3` →
+    code:0，返回 songID/songMID/cover/pay/interval/bpm/volume 等字段。
+  - 参数：`keyword`（必填）、`page`（默认1）、`limit`（默认10，最大60）。
+- **V3 播放链接 API 实测通过**：
+  - `GET /music/tencent/song/link?id=107192078&quality=0` → code:0，返回有效 URL（35kbps 试听）。
+  - `GET /music/tencent/song/link?id=202395578&quality=6` → 128kbps 免费歌曲 URL。
+  - `GET /music/tencent/song/link?id=107785182&quality=8` → 319kbps HQ 免费歌曲 URL。
+  - 参数：`id`/`mid`（二选一）、`quality`（0-16，默认14）、`type`（默认1）。
+- **V3 与 V2 关键差异**：
+  - 路径：`/v2/music/tencent?word=` → `/music/tencent/search/song?keyword=`（搜索拆分为独立端点）。
+  - 路径：`/v2/music/tencent?id=` → `/music/tencent/song/link?id=`（播放链接独立端点）。
+  - V3 搜索返回 `songID`/`songMID` 而非 `id`/`mid`，`interval` 为秒数而非文本。
+  - V3 新增 `quality` 参数控制音质，不自动降级。
+  - V3 code 成功值为 `0`，V2 为 `200`。
+- **V3 仅 QQ 音乐可用**，网易云接口尚未上线。
+- **改动范围**：仅 `docs/` 三个文档。无代码改动。
+
 ## 2026-04-18T05:36:00+08:00
 
 ### 在线搜索 API 失效调研 + 备选方案收集
