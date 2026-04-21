@@ -3,7 +3,7 @@
 Goal: 在 SillyTavern 中完成 JS 音乐播放器扩展的三项核心能力：可移动悬浮球 UI（折叠/展开、拖拽、主页/设置页切换）、离线与在线双模式播放、基于 MVU 变量
 `世界.当前剧情阶段` 的自动切歌；并维护四阶段离线曲库映射。
 
-InProgress: 无（V2→V3 迁移已完成，浏览器实测全部通过）
+InProgress: 无（双平台搜索架构已完成：QQ音乐V3 + 网易云Meting API + 交替排列）
 
 Done:
 
@@ -298,10 +298,19 @@ Done:
   - 收藏列表点击触发
     `resolveAndPlayFavorite`：toast"正在获取播放链接..."显示，重新搜索获取新 URL 后自动播放，收藏页自动关闭。
 
+- **网易云数据源切换 + QQ音乐空路径修复 + 交替排列**（2026-04-21T22:34）：
+  - 网易云从落月 V2（播放链接已返回500）切换到 Meting API Vercel 实例（`meting-api-omega.vercel.app`）。
+  - QQ 音乐 V3 新增 `isValidUrl()` 检查
+    `pathname.length > 1`，过滤空路径 URL；策略改为先 quality=0 再尝试 quality=6 升级。
+  - QQ 音乐搜索结果数量从 `maxCheck=5, maxValid=3` 提升到 `maxCheck=10, maxValid=5`。
+  - 搜索结果双平台交替排列：QQ第1→网易第1→QQ第2→网易第2→…
+  - 6 首歌多平台搜索测试：QQ 音乐 5/6 首第一条为官方正版，网易云 4/6 首为正版（周杰伦/松原みき 网易云无版权）。
+  - `checkApiStatus()` 改为同时检测两个数据源，任一可用即返回 ok。
+
 NextStep:
 
 1. 将构建产物推送到 GitHub `baiqigo/music` 仓库，更新 CDN 发布版本。
-2. V3 网易云接口上线后迁移网易云搜索。
+2. 观察 Meting API Vercel 实例稳定性，必要时自行 fork 部署。
 
 核心功能清单（已全部完成，UI 美化时禁止改动以下逻辑）:
 
@@ -537,4 +546,4 @@ Bug 记录:
 17. ~~**Firefox 移动端月光白转场动画不触发/卡死**~~（已修复，`Date.now()` 替代
     `performance.now()`，`transform: translate()` 替代 `left/top`）。
 
-LastUpdated: 2026-04-21T21:55:00+08:00
+LastUpdated: 2026-04-21T22:34:00+08:00

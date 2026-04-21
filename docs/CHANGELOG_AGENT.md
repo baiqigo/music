@@ -1,5 +1,20 @@
 # CHANGELOG_AGENT
 
+## 2026-04-21T22:34:00+08:00
+
+### 网易云切换 Meting API + QQ 音乐空路径修复 + 搜索交替排列
+
+- **网易云数据源切换**：落月 V2 播放链接接口返回 500（搜索可用但无法获取播放 URL），切换到 Meting API
+  Vercel 实例（`meting-api-omega.vercel.app`，CORS `*`，搜索结果自带 302→CDN 播放 URL，无需二次请求）。
+- **QQ 音乐空路径 URL 修复**：V3 对付费歌曲返回
+  `http://ws.stream.qqmusic.qq.com/`（pathname="/"），旧代码误判为有效 URL。新增 `isValidUrl()` 检查
+  `pathname.length > 1`；策略改为先 quality=0（试听，最广可用），再尝试 quality=6（128kbps）升级。
+- **搜索结果数量提升**：QQ 音乐从 `maxCheck=5, maxValid=3` 改为 `maxCheck=10, maxValid=5`。
+- **搜索结果交替排列**：从 `push(...netease, ...tencent)`
+  改为 QQ第1→网易第1→QQ第2→网易第2→… 确保两个平台最佳结果均在最前面。
+- **`checkApiStatus()` 改为双源检测**：同时检测落月 V3 和 Meting API，任一可用即返回 ok。
+- **DECISIONS 新增条目**：Meting API Vercel 公共实例作为网易云数据源。
+
 ## 2026-04-21T21:55:00+08:00
 
 ### V3 迁移浏览器端全量验证通过（5 项）
