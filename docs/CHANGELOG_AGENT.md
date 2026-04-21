@@ -1,5 +1,26 @@
 # CHANGELOG_AGENT
 
+## 2026-04-22T00:29:00+08:00
+
+### 搜索模糊化 + 双实例备份 + checkAudioPlayable 修复 + API 调研与推送
+
+- **搜索关键词模糊化预处理**：驼峰拆分 `loveSong`→`love Song`、中英文交界加空格
+  `方大同lovesong`→`方大同 lovesong`、多余空格合并。
+- **网易云 Meting API 双实例 fallback**：主实例 `meting-api-omega.vercel.app`，备实例
+  `qq-music-beige.vercel.app`（用户自部署 Meting-API）。主实例失败自动切备实例。
+- **网易云搜索跳过 `checkAudioPlayable`**：Meting
+  URL 为可信代理地址（302→CDN），3 秒超时导致并行校验时有效结果被误过滤（如方大同 Love
+  Song 官方版被过滤）。跳过后网易云结果全部保留。
+- **QQ 音乐 `checkAudioPlayable` 超时 3s→6s**：并行校验多首歌时网络拥塞，3 秒不够。
+- **`checkApiStatus()` 增加私有实例检测**：三源并行检测（落月 V3 + Meting 公共 + Meting 私有），任一可用即 ok。
+- **API 渠道调研结论**（Enhanced API / go-music-dl / api-clawer）：
+  - Enhanced API（`ncm-api-ten.vercel.app`）无 Cookie 无法返回播放链接，解灰功能 `ENABLE_GENERAL_UNBLOCK` 也无效。
+  - QQ 音乐 128kbps 需国内服务器（Vercel 在国外，QQ 官方接口拒绝）。
+  - VIP 歌曲完整版需 VIP Cookie（有效期约 1 年），但公开脚本不适合绑定个人账号。
+  - go-music-dl 是独立 Go 应用，不提供 REST API，无法集成。
+  - **最终决策：不采用 Cookie 方案，保持免费架构。**
+- **推送到 GitHub** `baiqigo/music` 仓库。
+
 ## 2026-04-21T22:34:00+08:00
 
 ### 网易云切换 Meting API + QQ 音乐空路径修复 + 搜索交替排列

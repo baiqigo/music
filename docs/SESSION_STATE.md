@@ -3,7 +3,7 @@
 Goal: 在 SillyTavern 中完成 JS 音乐播放器扩展的三项核心能力：可移动悬浮球 UI（折叠/展开、拖拽、主页/设置页切换）、离线与在线双模式播放、基于 MVU 变量
 `世界.当前剧情阶段` 的自动切歌；并维护四阶段离线曲库映射。
 
-InProgress: 无（双平台搜索架构已完成：QQ音乐V3 + 网易云Meting API + 交替排列）
+InProgress: 无
 
 Done:
 
@@ -307,10 +307,22 @@ Done:
   - 6 首歌多平台搜索测试：QQ 音乐 5/6 首第一条为官方正版，网易云 4/6 首为正版（周杰伦/松原みき 网易云无版权）。
   - `checkApiStatus()` 改为同时检测两个数据源，任一可用即返回 ok。
 
+- **搜索模糊化 + 网易云双实例备份 + checkAudioPlayable 修复**（2026-04-22T00:29）：
+  - 搜索关键词预处理：驼峰拆分（`loveSong`→`love Song`）、中英文交界加空格（`方大同lovesong`→`方大同 lovesong`）。
+  - 网易云 Meting API 双实例 fallback：主 `meting-api-omega.vercel.app`，备 `qq-music-beige.vercel.app`（用户自部署）。
+  - 网易云搜索结果跳过 `checkAudioPlayable`（Meting URL 为可信代理地址，避免 3 秒超时导致有效结果被误过滤）。
+  - QQ 音乐 `checkAudioPlayable` 超时从 3 秒提高到 6 秒。
+  - Vercel 部署了 NeteaseCloudMusicAPI
+    Enhanced（`ncm-api-ten.vercel.app`）和 Meting-API（`qq-music-beige.vercel.app`）。
+  - 调研结论：Enhanced API 无 Cookie 无法返回播放链接；QQ 音乐 128kbps 需国内服务器；VIP 歌曲完整版需 VIP
+    Cookie（有效期约 1 年）。
+  - 最终决策：不使用 Cookie 方案（公开脚本不适合绑定个人账号），保持现有免费架构。
+  - 已推送到 GitHub `baiqigo/music` 仓库。
+
 NextStep:
 
-1. 将构建产物推送到 GitHub `baiqigo/music` 仓库，更新 CDN 发布版本。
-2. 观察 Meting API Vercel 实例稳定性，必要时自行 fork 部署。
+1. CDN 缓存刷新后验证线上版本。
+2. 后续功能改进（如有需求）。
 
 核心功能清单（已全部完成，UI 美化时禁止改动以下逻辑）:
 
@@ -546,4 +558,4 @@ Bug 记录:
 17. ~~**Firefox 移动端月光白转场动画不触发/卡死**~~（已修复，`Date.now()` 替代
     `performance.now()`，`transform: translate()` 替代 `left/top`）。
 
-LastUpdated: 2026-04-21T22:34:00+08:00
+LastUpdated: 2026-04-22T00:29:00+08:00
