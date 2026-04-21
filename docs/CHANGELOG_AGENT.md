@@ -1,5 +1,21 @@
 # CHANGELOG_AGENT
 
+## 2026-04-21T21:55:00+08:00
+
+### V3 迁移浏览器端全量验证通过（5 项）
+
+- **chrome-devtools 自动化测试**（SillyTavern `http://127.0.0.1:8000/` 实际运行环境）：
+  1. **悬浮球展开**：pointer 事件 `pointerdown→pointerup` → ball hidden、panel visible、iframe 50x50→280x380。**通过。**
+  2. **API 状态检测（V3）**：切换在线模式 → `checkApiStatus()` 请求 `/music/tencent/search/song?keyword=test&limit=1`
+     → 返回 code=0 → 设置页显示"已连接"（`.api-status.ok`）。**通过。**
+  3. **在线搜索"告白气球"**：`doSearch()` 双平台并行 → 返回 3 条可用结果（含 `checkAudioPlayable`
+     校验），搜索结果正确渲染。**通过。**
+  4. **点击搜索结果播放**：点击"告白气球 - 二珂" → 歌曲信息 `二珂 · QQ音乐`（确认 V3 QQ 音乐端点），封面图 `y.qq.com`
+     CDN URL，唱片 `.spinning` 旋转，play hidden / pause visible。**通过。**
+  5. **收藏功能 `resolveAndPlayFavorite`**：收藏按钮 → localStorage `{title,artist,source}` 保存 → 收藏列表点击 →
+     toast"正在获取播放链接..." → 重新搜索获取 URL → 自动播放 → 收藏页关闭。**通过。**
+- **改动范围**：仅 `docs/` 三个文档。无代码改动。
+
 ## 2026-04-21T21:17:00+08:00
 
 ### QQ 音乐搜索+播放从 V2 迁移到 V3 端点

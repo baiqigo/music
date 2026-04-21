@@ -3,7 +3,7 @@
 Goal: 在 SillyTavern 中完成 JS 音乐播放器扩展的三项核心能力：可移动悬浮球 UI（折叠/展开、拖拽、主页/设置页切换）、离线与在线双模式播放、基于 MVU 变量
 `世界.当前剧情阶段` 的自动切歌；并维护四阶段离线曲库映射。
 
-InProgress: 无（V2→V3 迁移已完成，等待浏览器实测验证）
+InProgress: 无（V2→V3 迁移已完成，浏览器实测全部通过）
 
 Done:
 
@@ -287,11 +287,21 @@ Done:
   - 网易云保留 V2（`/v2/music/netease?word=` / `?id=`），不变。
   - webpack build:dev 全部编译通过。
 
+- **浏览器端 V3 迁移验证全部通过**（2026-04-21T21:50）：
+  - chrome-devtools 自动化测试 5 项全部通过。
+  - 悬浮球展开正常（50x50→280x380），pointer 事件链正确触发。
+  - 设置页切换在线模式后，`checkApiStatus()` V3 端点返回"已连接"（绿色 `.ok`）。
+  - 在线搜索"告白气球"返回 3 条可用结果，`checkAudioPlayable` 校验通过。
+  - 点击搜索结果"告白气球 - 二珂"：歌曲信息 `二珂 · QQ音乐`（确认 V3 QQ 音乐端点），封面图 QQ 音乐 CDN
+    URL，唱片旋转，暂停图标正确。
+  - 收藏按钮点击：localStorage 保存 `{title:"告白气球", artist:"二珂", source:"QQ音乐"}`。
+  - 收藏列表点击触发
+    `resolveAndPlayFavorite`：toast"正在获取播放链接..."显示，重新搜索获取新 URL 后自动播放，收藏页自动关闭。
+
 NextStep:
 
-1. 浏览器实测在线搜索播放功能（QQ 音乐 V3 + 网易云 V2）。
-2. 验证 checkApiStatus 设置页"已连接"状态。
-3. 验证收藏功能 resolveAndPlayFavorite 对 QQ 音乐歌曲的兼容性。
+1. 将构建产物推送到 GitHub `baiqigo/music` 仓库，更新 CDN 发布版本。
+2. V3 网易云接口上线后迁移网易云搜索。
 
 核心功能清单（已全部完成，UI 美化时禁止改动以下逻辑）:
 
@@ -527,4 +537,4 @@ Bug 记录:
 17. ~~**Firefox 移动端月光白转场动画不触发/卡死**~~（已修复，`Date.now()` 替代
     `performance.now()`，`transform: translate()` 替代 `left/top`）。
 
-LastUpdated: 2026-04-21T21:17:00+08:00
+LastUpdated: 2026-04-21T21:55:00+08:00
