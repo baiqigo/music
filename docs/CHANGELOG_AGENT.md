@@ -1,5 +1,25 @@
 # CHANGELOG_AGENT
 
+## 2026-04-21T21:17:00+08:00
+
+### QQ 音乐搜索+播放从 V2 迁移到 V3 端点
+
+- **`searchPlatform('tencent')` 搜索迁移**：
+  - V2 `GET /v2/music/tencent?word={keyword}` → V3 `GET /music/tencent/search/song?keyword={keyword}&limit={maxCheck}`。
+  - V2 响应 `data[]`（字段 id/song/singer/cover）→ V3 响应 `data.list[]`（字段 songID/title/singer/cover）。
+  - V2 成功判断 `Array.isArray(data)` → V3 成功判断 `code === 0 && Array.isArray(data.list)`。
+- **`searchPlatform('tencent')` 播放链接迁移**：
+  - V2 `GET /v2/music/tencent?id={id}` → V3 `GET /music/tencent/song/link?id={songID}&quality=6`。
+  - 新增付费歌曲 fallback：quality=6 无 URL 时自动尝试 quality=0（35kbps 试听）。
+  - V3 成功判断 `code === 0`。
+- **`checkApiStatus()` 迁移**：
+  - V2 `GET /v2/music/netease?word=test` → V3 `GET /music/tencent/search/song?keyword=test&limit=1`。
+  - V3 成功判断 `code === 0`。
+- **网易云保持不变**：`searchPlatform('netease')` 仍使用 V2 端点（`/v2/music/netease?word=` / `?id=`）。
+- **改动范围**：`src/alice-music-float/index.ts`（+66 行，-21 行）、`dist/alice-music-float/index.js`（构建产物）。
+- **构建结果**：`npm run build:dev` 所有入口 `compiled successfully`。
+- **待验证**：浏览器实测在线搜索播放（QQ 音乐 V3 + 网易云 V2）。
+
 ## 2026-04-21T21:12:00+08:00
 
 ### 落月 API V2/V3 实测 + V3 端点验证通过

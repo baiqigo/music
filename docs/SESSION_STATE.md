@@ -3,7 +3,7 @@
 Goal: 在 SillyTavern 中完成 JS 音乐播放器扩展的三项核心能力：可移动悬浮球 UI（折叠/展开、拖拽、主页/设置页切换）、离线与在线双模式播放、基于 MVU 变量
 `世界.当前剧情阶段` 的自动切歌；并维护四阶段离线曲库映射。
 
-InProgress: 落月 API V3 端点已验证可用，准备将代码从 V2 迁移到 V3（QQ音乐搜索+播放链接）
+InProgress: 无（V2→V3 迁移已完成，等待浏览器实测验证）
 
 Done:
 
@@ -278,13 +278,20 @@ Done:
   - **V3 仅支持 QQ 音乐**，网易云音乐接口尚未上线。V2 的网易云点歌 API 仍可用作备用。
   - Meting /
     Meting-Agent 源码已下载到本地（`E:\xiazai\Meting-master`、`E:\xiazai\Meting-Agent-main`），供后续备用方案参考。
+- **QQ 音乐 V2→V3 代码迁移已完成**（2026-04-21T21:17）：
+  - `searchPlatform('tencent')` 搜索端点从 `/v2/music/tencent?word=` 改为 `/music/tencent/search/song?keyword=&limit=`。
+  - `searchPlatform('tencent')` 播放链接从 `/v2/music/tencent?id=` 改为
+    `/music/tencent/song/link?id=&quality=6`（付费歌曲 fallback quality=0）。
+  - V3 响应解析：搜索 `data.list[]`（字段 songID/title/singer/cover），成功 code=0。
+  - `checkApiStatus()` 从 V2 网易云端点改为 V3 QQ 音乐端点检测。
+  - 网易云保留 V2（`/v2/music/netease?word=` / `?id=`），不变。
+  - webpack build:dev 全部编译通过。
 
 NextStep:
 
-1. 将代码从 V2 迁移到 V3：QQ 音乐搜索改用 `/music/tencent/search/song?keyword=`，播放链接改用
-   `/music/tencent/song/link?id=&quality=`。
-2. 网易云音乐暂保留 V2 点歌 API（`/v2/music/netease?word=` / `?id=`），V3 网易云上线后再切换。
-3. 构建验证 + 浏览器测试在线搜索播放功能。
+1. 浏览器实测在线搜索播放功能（QQ 音乐 V3 + 网易云 V2）。
+2. 验证 checkApiStatus 设置页"已连接"状态。
+3. 验证收藏功能 resolveAndPlayFavorite 对 QQ 音乐歌曲的兼容性。
 
 核心功能清单（已全部完成，UI 美化时禁止改动以下逻辑）:
 
@@ -520,4 +527,4 @@ Bug 记录:
 17. ~~**Firefox 移动端月光白转场动画不触发/卡死**~~（已修复，`Date.now()` 替代
     `performance.now()`，`transform: translate()` 替代 `left/top`）。
 
-LastUpdated: 2026-04-21T21:12:00+08:00
+LastUpdated: 2026-04-21T21:17:00+08:00
